@@ -1,6 +1,10 @@
 // This is a simulated blockchain service
 // In a real application, this would integrate with an actual blockchain network
 
+const RPC_URL = process.env.BLOCKCHAIN_RPC_URL;
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS;
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+
 interface BlockchainRecord {
   productId: string;
   cid: string;

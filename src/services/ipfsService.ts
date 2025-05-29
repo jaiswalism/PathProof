@@ -1,8 +1,7 @@
 import { Web3Storage } from 'web3.storage';
 
-// This is a placeholder API key. In a production app, this should be in environment variables
-// and proper authentication should be implemented
-const API_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDVGOWE0OEM2NzE1MEQyQjMxNDgzMjYwMkNCRTAzZkRhZEY1NUIyQmQiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2NzEwMzM2MTc1MDYsIm5hbWUiOiJTaW11bGF0ZWQgS2V5In0.TEST_KEY_SIMULATE';
+// Use environment variable for API token
+const API_TOKEN = process.env.JWT_SECRET;
 
 // For simulation purposes - typically you'd use the actual web3.storage client
 class SimulatedWeb3Storage {
@@ -31,7 +30,7 @@ const getClient = () => {
     // return new Web3Storage({ token: API_TOKEN });
     
     // For the purpose of this demo, we'll use the simulated client
-    return new SimulatedWeb3Storage(API_TOKEN);
+    return new SimulatedWeb3Storage(API_TOKEN || '');
   } catch (error) {
     console.error('Error creating Web3Storage client:', error);
     throw new Error('Failed to initialize IPFS client');
