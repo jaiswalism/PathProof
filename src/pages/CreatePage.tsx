@@ -92,7 +92,50 @@ const CreatePage: React.FC = () => {
       setLoading(false);
     }
   };
-  
+  const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+  );
+  const data = await res.json();
+  return data.display_name; // e.g., "Jurong East, Singapore"
+};
+
+  const handleDetectLocation = async () => {
+  if (!navigator.geolocation) {
+    toast.error("Geolocation is not supported by your browser");
+    return;
+  }
+
+  toast.loading("Detecting location...", { id: "geo" });
+
+  navigator.geolocation.getCurrentPosition(
+    async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+
+        // Get human-readable address
+        const address = await reverseGeocode(latitude, longitude);
+
+        // Save address to form
+        setFormData((prev) => ({
+          ...prev,
+          location: address,
+        }));
+
+        toast.success("Location detected!", { id: "geo" });
+      } catch (err) {
+        console.error("Reverse geocoding failed", err);
+        toast.error("Location found, but address lookup failed", { id: "geo" });
+      }
+    },
+    (error) => {
+      console.error("Geolocation error:", error);
+      toast.error("Failed to detect location", { id: "geo" });
+    }
+  );
+};
+
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -159,22 +202,22 @@ const CreatePage: React.FC = () => {
                   disabled={loading}
                 />
               </div>
-              
               <div>
-                <label htmlFor="location" className="mb-2 block font-medium text-slate-700">
-                  Manufacturing Location
-                </label>
-                <input
-                  type="text"
-                  id="location"
-                  name="location"
-                  className="input w-full"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  placeholder="e.g., Factory A, Singapore"
-                  disabled={loading}
-                />
-              </div>
+  <label className="mb-2 block font-medium text-slate-700">Location</label>
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      className="btn btn-secondary"
+      onClick={handleDetectLocation}
+      disabled={loading}
+    >
+      Detect Location
+    </button>
+    <span className="text-sm text-slate-600">{formData.location || "Not set"}</span>
+  </div>
+</div>
+
+              
             </div>
             
             <div className="mt-6 text-center">

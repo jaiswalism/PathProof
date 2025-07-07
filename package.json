@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@pinata/sdk": "^2.1.0",
+    "ethers": "^6.15.0",
     "lucide-react": "^0.344.0",
     "qrcode.react": "^3.1.0",
     "react": "^18.3.1",
@@ -17,8 +19,7 @@
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.22.0",
     "react-webcam": "^7.2.0",
-    "supply-chain-traceability": "file:",
-    "web3.storage": "^4.5.5"
+    "supply-chain-traceability": "file:"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
