@@ -10,7 +10,7 @@ const pinata = new pinataSDK(import.meta.env.VITE_PINATA_API_KEY,
  * @returns CID string from IPFS
  */
  export const uploadMetadata = async (metadata: any): Promise<string> => {
-  const PINATA_JWT = import.meta.env.VITE_PINATA_API_KEY; // Use JWT token
+  const PINATA_JWT = import.meta.env.VITE_PINATA_JWT_TOKEN; // Use JWT token
 
   const response = await fetch("https://api.pinata.cloud/pinning/pinJSONToIPFS", {
     method: "POST",
