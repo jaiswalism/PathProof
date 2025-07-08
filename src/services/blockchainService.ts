@@ -1,10 +1,12 @@
 import { BrowserProvider, Contract } from "ethers";
 import ProductRegistryABI from "../abis/ProductRegistry.json";
 
-// ✅ Make sure this is correctly set in your .env file as VITE_CONTRACT_ADDRESS
+// ✅ Contract deployed to Sepolia
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS as string;
 
-// MetaMask provider
+/**
+ * 🌐 Get MetaMask-injected provider
+ */
 const getProvider = (): BrowserProvider => {
   if (!window.ethereum) {
     throw new Error("MetaMask is not installed");
@@ -12,7 +14,9 @@ const getProvider = (): BrowserProvider => {
   return new BrowserProvider(window.ethereum);
 };
 
-// Smart contract instance
+/**
+ * 🧠 Return connected contract instance
+ */
 const getContract = async (): Promise<Contract> => {
   const provider = getProvider();
   const signer = await provider.getSigner();
@@ -20,7 +24,7 @@ const getContract = async (): Promise<Contract> => {
 };
 
 /**
- * ⬆️ Updates a product's CID on the blockchain using `registerProduct(string id, string cid)`
+ * ⬆️ Register or update product CID on-chain
  */
 export const updateProductCID = async (
   productId: string,
@@ -28,7 +32,7 @@ export const updateProductCID = async (
 ): Promise<boolean> => {
   try {
     const contract = await getContract();
-    const tx = await contract.registerProduct(productId, cid); // 🔁 Use correct contract method
+    const tx = await contract.updateMetadataCID(productId, cid); // ✅ Correct method
     await tx.wait();
     console.log(`✅ Blockchain updated for ${productId} with CID ${cid}`);
     return true;
@@ -36,18 +40,18 @@ export const updateProductCID = async (
     console.error("❌ Blockchain update failed:", error);
     return false;
   }
-  
 };
 
+
 /**
- * 🔽 Retrieves CID from the chain using `getMetadataCID(string id)`
+ * 🔽 Retrieve current CID from blockchain
  */
 export const getProductCID = async (
   productId: string
 ): Promise<string | null> => {
   try {
     const contract = await getContract();
-    const cid: string = await contract.getMetadataCID(productId); // 🔁 Use correct read method
+    const cid: string = await contract.getMetadataCID(productId);
     return cid;
   } catch (error) {
     console.error("❌ Failed to get product CID:", error);
@@ -56,7 +60,7 @@ export const getProductCID = async (
 };
 
 /**
- * 🆔 Generates a unique product ID like `PROD-492233-1983`
+ * 🆔 Generate unique product ID
  */
 export const generateProductId = (): string => {
   const prefix = "PROD";

@@ -5,3 +5,5 @@ libs = ["node_modules", "lib"]
 remappings = ["supply-chain-traceability/=node_modules/supply-chain-traceability/"]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+[rpc_endpoints]
+sepolia = "https://sepolia.infura.io/v3/9647af5c3e1f46d398a5088b179b2e20"  # or Alchemy, etc.
