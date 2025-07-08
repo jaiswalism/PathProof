@@ -32,8 +32,8 @@ export const updateProductCID = async (
 ): Promise<boolean> => {
   try {
     const contract = await getContract();
-    const tx = await contract.updateMetadataCID(productId, cid); // ✅ Correct method
-    await tx.wait();
+    const tx = await contract.registerProduct(productId, cid); // uses registerProduct()
+    await tx.wait(); // Wait until transaction is mined
     console.log(`✅ Blockchain updated for ${productId} with CID ${cid}`);
     return true;
   } catch (error) {
@@ -41,7 +41,6 @@ export const updateProductCID = async (
     return false;
   }
 };
-
 
 /**
  * 🔽 Retrieve current CID from blockchain
