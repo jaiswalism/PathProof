@@ -32,15 +32,38 @@ export const updateProductCID = async (
 ): Promise<boolean> => {
   try {
     const contract = await getContract();
-    const tx = await contract.registerProduct(productId, cid); // uses registerProduct()
-    await tx.wait(); // Wait until transaction is mined
-    console.log(`✅ Blockchain updated for ${productId} with CID ${cid}`);
+
+    // First try to register the product
+    try {
+      const registerTx = await contract.registerProduct(productId, cid);
+      await registerTx.wait();
+      console.log(`✅ Product ${productId} registered with CID ${cid}`);
+      return true;
+    } catch (registerError: any) {
+      const errorMessage = registerError?.error?.message || registerError?.message || "";
+
+      // Check if the error is because the product already exists
+      const alreadyExists = errorMessage.toLowerCase().includes("already exists");
+
+      if (!alreadyExists) {
+        throw registerError; // Rethrow if it's not the expected error
+      }
+
+      console.log(`ℹ️ Product already exists, updating CID...`);
+    }
+
+    // If registration failed because it already exists, update it
+    const updateTx = await contract.updateMetadataCID(productId, cid);
+    await updateTx.wait();
+    console.log(`✅ Product ${productId} metadata updated with CID ${cid}`);
     return true;
+
   } catch (error) {
-    console.error("❌ Blockchain update failed:", error);
+    console.error("❌ Blockchain operation failed:", error);
     return false;
   }
 };
+
 
 /**
  * 🔽 Retrieve current CID from blockchain
