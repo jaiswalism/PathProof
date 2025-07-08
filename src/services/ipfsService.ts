@@ -1,8 +1,8 @@
-import pinataSDK from '@pinata/sdk';
+//import pinataSDK from '@pinata/sdk';
 
 // Load Pinata credentials from environment variables
-const pinata = new pinataSDK(import.meta.env.VITE_PINATA_API_KEY,
-  import.meta.env.VITE_PINATA_API_SECRET);
+//const pinata = new pinataSDK(import.meta.env.VITE_PINATA_API_KEY,
+// import.meta.env.VITE_PINATA_API_SECRET);
 
 /**
  * Uploads a metadata JSON object to IPFS via Pinata.
@@ -28,7 +28,10 @@ const pinata = new pinataSDK(import.meta.env.VITE_PINATA_API_KEY,
 
   const result = await response.json();
   return result.IpfsHash; // This is the CID
+  console.log("✅ Uploaded to IPFS CID:", result.IpfsHash);
 };
+
+
 
 
 /**
@@ -37,15 +40,22 @@ const pinata = new pinataSDK(import.meta.env.VITE_PINATA_API_KEY,
  * @returns Parsed JSON metadata object
  */
 export const fetchMetadata = async (cid: string): Promise<any> => {
-  try {
-    const url = `https://gateway.pinata.cloud/ipfs/${cid}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch metadata from IPFS (status: ${response.status})`);
+  const gateways = [
+    `https://gateway.pinata.cloud/ipfs/${cid}`,
+    `https://ipfs.io/ipfs/${cid}`,
+    `https://cloudflare-ipfs.com/ipfs/${cid}`,
+  ];
+
+  for (const gateway of gateways) {
+    try {
+      const res = await fetch(gateway);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn(`⚠️ Fetch failed at ${gateway}`, e);
     }
-    return await response.json();
-  } catch (error) {
-    console.error('❌ Error fetching metadata from IPFS:', error);
-    throw error;
   }
+
+  throw new Error(`❌ Failed to fetch metadata from IPFS from all known gateways`);
 };
