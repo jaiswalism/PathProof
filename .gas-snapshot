@@ -1,0 +1,6 @@
+ProductRegistryTest:testAddCheckpoint() (gas: 161902)
+ProductRegistryTest:testAddWitness() (gas: 271615)
+ProductRegistryTest:testGetMetadataCID() (gas: 69414)
+ProductRegistryTest:testRegisterProduct() (gas: 60730)
+ProductRegistryTest:testUpdateMetadataCID() (gas: 65286)
+ProductRegistryTest:testVerifyCheckpoint() (gas: 323615)

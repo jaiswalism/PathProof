@@ -1,0 +1,21 @@
+# zkpol_js gitignore
+
+# Ignore large or temporary proof artifacts
+zkpol/proof.json
+zkpol/public.json
+zkpol/witness.json
+zkpol/witness.wtns
+
+# Ignore intermediate ZKey files except final
+zkpol/zkpol_0000.zkey
+
+# Ignore setup and build artifacts
+zkpol/*.r1cs
+zkpol/*.sym
+zkpol/pot12_final.ptau
+
+
+zkpol/input.json
+
+
+circom/

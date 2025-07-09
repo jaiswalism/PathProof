@@ -1,0 +1,406 @@
+import React, { useRef, useState } from "react";
+import toast from "react-hot-toast";
+import {
+  Upload,
+  MapPin,
+  Clock,
+  Loader2,
+  Image as ImageIcon,
+  Check,
+} from "lucide-react";
+import {
+  generateProof,
+  parseProofForSolidity,
+  verifyCheckpointOnChain,
+} from "../services/zkProofService";
+
+import QRScanner from "../components/QRScanner";
+import { getProductCID, updateProductCID } from "../services/blockchainService";
+import { fetchMetadata, uploadMetadata } from "../services/ipfsService";
+import {
+  getCurrentLocation,
+  getRawLocation,
+} from "../services/locationService";
+import { scanQRCodeFromImage } from "../services/imageScanService";
+
+const { lat, lng } = await getRawLocation();
+const timestamp = Math.floor(Date.now() / 1000);
+const deviceId = import.meta.env.VITE_DEVICE_ID;
+interface ProductMetadata {
+  productId: string;
+  name: string;
+  batchNumber: string;
+  manufactureDate: string;
+  proofs: Array<{
+    checkpoint: string;
+    timestamp: string;
+    location: string;
+    proofHash: string;
+    verified?: boolean;
+    zkProof?: {
+      proof: any;
+      publicSignals: any;
+    };
+  }>;
+}
+
+const ScanPage: React.FC = () => {
+  const [productId, setProductId] = useState<string | null>(null);
+  const [metadata, setMetadata] = useState<ProductMetadata | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [checkpointData, setCheckpointData] = useState({
+    checkpoint: "",
+    location: "",
+  });
+  const [updating, setUpdating] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleScan = async (scannedData: string) => {
+    if (!scannedData) return;
+
+    setProductId(scannedData);
+    setLoading(true);
+    setMetadata(null);
+    setSuccess(false);
+
+    try {
+      toast.loading("Retrieving product data...", { id: "fetch" });
+      const cid = await getProductCID(scannedData);
+      if (!cid) {
+        toast.error("Product not found on blockchain", { id: "fetch" });
+        return;
+      }
+      const productMetadata = await fetchMetadata(cid);
+      setMetadata(productMetadata);
+      toast.success("Product data retrieved successfully", { id: "fetch" });
+    } catch (error) {
+      console.error("Error fetching product data:", error);
+      toast.error("Failed to retrieve product data", { id: "fetch" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCheckpointData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // FIXED handleUpdate function - extract the hash correctly
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!metadata || !productId) return;
+    if (!checkpointData.checkpoint || !checkpointData.location) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    setUpdating(true);
+    try {
+      toast.loading("Generating proof of location...", { id: "proof" });
+      const { proof, publicSignals } = await generateProof(
+        lat,
+        lng,
+        timestamp,
+        deviceId,
+        true
+      );
+
+      // FIXED: Extract the actual hash from publicSignals[0]
+      const proofHash = publicSignals[0]; // This is already a string
+
+      console.log("Final proofHash:", proofHash); // Should show the long number string
+
+      toast.success("Proof generated successfully", { id: "proof" });
+      const updatedMetadata = {
+        ...metadata,
+        proofs: [
+          ...metadata.proofs,
+          {
+            checkpoint: checkpointData.checkpoint,
+            timestamp: new Date().toISOString(),
+            location: checkpointData.location,
+            proofHash, // Now stores just the hash string, not the whole object
+          },
+        ],
+      };
+
+      toast.loading("Updating IPFS metadata...", { id: "ipfs" });
+      const newCid = await uploadMetadata(updatedMetadata);
+      toast.success("Metadata updated on IPFS", { id: "ipfs" });
+
+      toast.loading("Updating blockchain record...", { id: "blockchain" });
+      await updateProductCID(productId, newCid);
+      toast.success("Blockchain record updated", { id: "blockchain" });
+
+      setMetadata(updatedMetadata);
+      setCheckpointData({ checkpoint: "", location: "" });
+      setSuccess(true);
+    } catch (error) {
+      console.error("Error updating product:", error);
+      toast.error("Failed to update product journey");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUploadQR = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      toast.loading("Scanning QR code from image...", { id: "qrscan" });
+      const scannedData = await scanQRCodeFromImage(file);
+      toast.success("QR code scanned", { id: "qrscan" });
+      const location = await getCurrentLocation();
+      setCheckpointData((prev) => ({ ...prev, location }));
+      await handleScan(scannedData);
+    } catch (error) {
+      console.error("Error scanning image:", error);
+      toast.error("Failed to scan QR code");
+    }
+  };
+
+  const handleVerifyProof = async (checkpointIndex: number) => {
+    try {
+      if (!metadata || !productId) return;
+      const checkpoint = metadata.proofs[checkpointIndex];
+
+      // const { lat, lng } = await getRawLocation();
+      // const deviceId = import.meta.env.VITE_DEVICE_ID;
+      // const timestamp = Math.floor(
+      //   new Date(checkpoint.timestamp).getTime() / 1000
+      // );
+
+      toast.loading("Generating proof...", { id: "zk" });
+      // const { proof, publicSignals } = await generateProof(
+      //   lat,
+      //   lng,
+      //   timestamp,
+      //   deviceId,
+      //   true
+      // );
+
+      if (!checkpoint.zkProof) {
+        toast.error("No stored zkProof found for this checkpoint");
+        return;
+      }
+
+      const { proof, publicSignals } = checkpoint.zkProof;
+      const { a, b, c, input } = await parseProofForSolidity(proof, publicSignals);
+      toast.loading("Verifying on-chain...", { id: "zk" });
+      await verifyCheckpointOnChain(productId, checkpointIndex, a, b, c, input);
+      toast.success("Verified on-chain!", { id: "zk" });      
+
+      const updatedProofs = [...metadata.proofs];
+      updatedProofs[checkpointIndex].verified = true;
+      setMetadata({ ...metadata, proofs: updatedProofs });
+    } catch (err) {
+      console.error("Verification failed:", err);
+      toast.error("Failed to verify proof", { id: "zk" });
+    }
+  };
+  
+  return (
+    <div className="container mx-auto px-4 py-12">
+      <div className="mx-auto max-w-3xl">
+        <h1 className="mb-8 text-center">Scan & Update Product</h1>
+
+        <div className="card mb-8">
+          <h2 className="mb-6 text-xl font-semibold">Scan Product QR Code</h2>
+          <QRScanner onScan={handleScan} />
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="btn btn-secondary inline-flex items-center"
+            >
+              <ImageIcon className="mr-2" /> Upload QR Image
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleUploadQR}
+            />
+          </div>
+        </div>
+
+        {loading && (
+          <div className="card flex flex-col items-center justify-center py-12">
+            <Loader2 size={48} className="mb-4 animate-spin text-teal-600" />
+            <p className="text-lg text-slate-600">Retrieving product data...</p>
+          </div>
+        )}
+
+        {metadata && !loading && (
+          <div key={metadata.proofs.length} className="card mt-8">
+            <h2 className="mb-6 text-xl font-semibold">Product Information</h2>
+            <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <p className="text-sm text-slate-500">Product ID</p>
+                <p className="font-medium">{metadata.productId}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Product Name</p>
+                <p className="font-medium">{metadata.name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Batch Number</p>
+                <p className="font-medium">{metadata.batchNumber}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500">Manufacture Date</p>
+                <p className="font-medium">
+                  {new Date(metadata.manufactureDate).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <h3 className="mb-4 text-lg font-medium">Current Journey</h3>
+              <div className="relative pl-8">
+                <div className="timeline-line"></div>
+                {metadata.proofs.map((checkpoint, index) => (
+                  <div key={index} className="mb-6 relative">
+                    <div className="timeline-dot absolute -left-6 top-0"></div>
+                    <div className="rounded-lg bg-slate-50 p-4">
+                      <h4 className="mb-2 font-semibold">
+                        {checkpoint.checkpoint}
+                      </h4>
+                      <div className="mb-2 flex items-center text-sm text-slate-600">
+                        <Clock size={16} className="mr-2" />
+                        {new Date(checkpoint.timestamp).toLocaleString()}
+                      </div>
+                      <div className="flex items-center text-sm text-slate-600">
+                        <MapPin size={16} className="mr-2" />
+                        {checkpoint.location}
+                      </div>
+                      <div className="mt-2 overflow-hidden overflow-ellipsis text-xs text-slate-500">
+                        <span className="font-mono">
+                          {checkpoint.proofHash
+                            ? (() => {
+                                // Convert to string first, then check if it's valid
+                                const hashStr = String(checkpoint.proofHash);
+                                if (hashStr === "[object Object]") {
+                                  // If it's an object, try to extract the actual hash
+                                  console.error(
+                                    "proofHash is an object:",
+                                    checkpoint.proofHash
+                                  );
+                                  return "Invalid hash format";
+                                }
+                                return `${hashStr.substring(
+                                  0,
+                                  8
+                                )}...${hashStr.slice(-8)}`;
+                              })()
+                            : "N/A"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {!checkpoint.verified && (
+                      <button
+                        className="btn btn-primary mt-2"
+                        onClick={() => handleVerifyProof(index)}
+                      >
+                        Verify ZK Proof
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {!success ? (
+              <div>
+                <h3 className="mb-4 text-lg font-medium">Add New Checkpoint</h3>
+                <form onSubmit={handleUpdate}>
+                  <div className="mb-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                      <label
+                        htmlFor="checkpoint"
+                        className="mb-2 block font-medium text-slate-700"
+                      >
+                        Checkpoint Name
+                      </label>
+                      <input
+                        type="text"
+                        id="checkpoint"
+                        name="checkpoint"
+                        className="input w-full"
+                        value={checkpointData.checkpoint}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Distribution Center"
+                        disabled={updating}
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="location"
+                        className="mb-2 block font-medium text-slate-700"
+                      >
+                        Location
+                      </label>
+                      <input
+                        type="text"
+                        id="location"
+                        name="location"
+                        className="input w-full"
+                        value={checkpointData.location}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Warehouse B, Frankfurt"
+                        disabled={updating}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-6 text-center">
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={updating}
+                    >
+                      {updating ? (
+                        <>
+                          <Loader2 size={20} className="mr-2 animate-spin" />{" "}
+                          Updating...
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={20} className="mr-2" /> Update Product
+                          Journey
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div className="rounded-lg bg-green-50 p-6 text-center">
+                <div className="mb-4 flex justify-center">
+                  <div className="rounded-full bg-green-100 p-3">
+                    <Check size={32} className="text-green-600" />
+                  </div>
+                </div>
+                <h3 className="mb-2 text-lg font-semibold text-green-800">
+                  Product Updated Successfully
+                </h3>
+                <p className="text-green-700">
+                  The product journey has been updated on the blockchain
+                </p>
+                <button
+                  className="btn btn-primary mt-4"
+                  onClick={() => setSuccess(false)}
+                >
+                  Add Another Checkpoint
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ScanPage;
