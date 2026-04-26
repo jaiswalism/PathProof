@@ -23,9 +23,6 @@ import {
 } from "../services/locationService";
 import { scanQRCodeFromImage } from "../services/imageScanService";
 
-const { lat, lng } = await getRawLocation();
-const timestamp = Math.floor(Date.now() / 1000);
-const deviceId = import.meta.env.VITE_DEVICE_ID;
 interface ProductMetadata {
   productId: string;
   name: string;
@@ -99,6 +96,11 @@ const ScanPage: React.FC = () => {
     setUpdating(true);
     try {
       toast.loading("Generating proof of location...", { id: "proof" });
+      
+      const { lat, lng } = await getRawLocation();
+      const timestamp = Math.floor(Date.now() / 1000);
+      const deviceId = import.meta.env.VITE_DEVICE_ID || "111";
+
       const { proof, publicSignals } = await generateProof(
         lat,
         lng,
