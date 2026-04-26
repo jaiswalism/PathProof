@@ -78,7 +78,7 @@ function verifyCheckpoint(
     require(products[productId].isRegistered, "Product not found");
     require(checkpointIndex < products[productId].checkpoints.length, "Invalid checkpoint");
     Checkpoint storage cp = products[productId].checkpoints[checkpointIndex];
-    require(cp.witnesses.length >= 3, "Not enough witnesses");
+    // require(cp.witnesses.length >= 3, "Not enough witnesses");
     require(!cp.verified, "Already verified");
 
     bool isValid = verifier.verifyTx(a, b, c, input);

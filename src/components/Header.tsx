@@ -36,7 +36,7 @@ const Header: React.FC = () => {
             className="flex items-center space-x-2 text-teal-600 transition-colors hover:text-teal-700"
           >
             <Layers size={28} />
-            <span className="text-xl font-bold">TraceChain</span>
+            <span className="text-xl font-bold">PathProof</span>
           </Link>
           
           {/* Desktop Navigation */}

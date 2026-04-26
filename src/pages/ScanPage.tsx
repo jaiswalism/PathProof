@@ -15,7 +15,7 @@ import {
 } from "../services/zkProofService";
 
 import QRScanner from "../components/QRScanner";
-import { getProductCID, updateProductCID } from "../services/blockchainService";
+import { getProductCID, updateProductCID, addCheckpointOnChain } from "../services/blockchainService";
 import { fetchMetadata, uploadMetadata } from "../services/ipfsService";
 import {
   getCurrentLocation,
@@ -54,6 +54,7 @@ const ScanPage: React.FC = () => {
   });
   const [updating, setUpdating] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [verifyingIndex, setVerifyingIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleScan = async (scannedData: string) => {
@@ -121,6 +122,10 @@ const ScanPage: React.FC = () => {
             timestamp: new Date().toISOString(),
             location: checkpointData.location,
             proofHash, // Now stores just the hash string, not the whole object
+            zkProof: {
+              proof,
+              publicSignals
+            }
           },
         ],
       };
@@ -131,6 +136,10 @@ const ScanPage: React.FC = () => {
 
       toast.loading("Updating blockchain record...", { id: "blockchain" });
       await updateProductCID(productId, newCid);
+
+      toast.loading("Adding checkpoint to smart contract...", { id: "blockchain" });
+      await addCheckpointOnChain(productId, checkpointData.location, proofHash, timestamp);
+      
       toast.success("Blockchain record updated", { id: "blockchain" });
 
       setMetadata(updatedMetadata);
@@ -163,6 +172,7 @@ const ScanPage: React.FC = () => {
   const handleVerifyProof = async (checkpointIndex: number) => {
     try {
       if (!metadata || !productId) return;
+      setVerifyingIndex(checkpointIndex);
       const checkpoint = metadata.proofs[checkpointIndex];
 
       // const { lat, lng } = await getRawLocation();
@@ -188,15 +198,32 @@ const ScanPage: React.FC = () => {
       const { proof, publicSignals } = checkpoint.zkProof;
       const { a, b, c, input } = await parseProofForSolidity(proof, publicSignals);
       toast.loading("Verifying on-chain...", { id: "zk" });
-      await verifyCheckpointOnChain(productId, checkpointIndex, a, b, c, input);
-      toast.success("Verified on-chain!", { id: "zk" });      
+      try {
+        await verifyCheckpointOnChain(productId, checkpointIndex, a, b, c, input);
+      } catch (err: any) {
+        const errorMsg = err?.reason || err?.message || String(err);
+        if (!errorMsg.toLowerCase().includes("already verified")) {
+          throw err;
+        }
+      }
 
       const updatedProofs = [...metadata.proofs];
       updatedProofs[checkpointIndex].verified = true;
-      setMetadata({ ...metadata, proofs: updatedProofs });
+      const updatedMetadata = { ...metadata, proofs: updatedProofs };
+
+      toast.loading("Syncing verification to IPFS...", { id: "zk" });
+      const newCid = await uploadMetadata(updatedMetadata);
+      
+      toast.loading("Updating blockchain record...", { id: "zk" });
+      await updateProductCID(productId, newCid);
+
+      setMetadata(updatedMetadata);
+      toast.success("Verified and synced!", { id: "zk" });
     } catch (err) {
       console.error("Verification failed:", err);
       toast.error("Failed to verify proof", { id: "zk" });
+    } finally {
+      setVerifyingIndex(null);
     }
   };
   
@@ -303,8 +330,15 @@ const ScanPage: React.FC = () => {
                       <button
                         className="btn btn-primary mt-2"
                         onClick={() => handleVerifyProof(index)}
+                        disabled={verifyingIndex === index}
                       >
-                        Verify ZK Proof
+                        {verifyingIndex === index ? (
+                          <>
+                            <Loader2 size={16} className="mr-2 inline animate-spin" /> Verifying...
+                          </>
+                        ) : (
+                          "Verify ZK Proof"
+                        )}
                       </button>
                     )}
                   </div>

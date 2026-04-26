@@ -66,6 +66,40 @@ export const updateProductCID = async (
 
 
 /**
+ * 📝 Add a new checkpoint on-chain
+ */
+export const addCheckpointOnChain = async (
+  productId: string,
+  location: string,
+  proofHash: string,
+  timestamp: number
+): Promise<boolean> => {
+  try {
+    const contract = await getContract();
+    
+    // Ensure proofHash is a 32-byte hex string required by Solidity bytes32
+    let formattedHash = proofHash;
+    if (!proofHash.startsWith("0x")) {
+      formattedHash = "0x" + BigInt(proofHash).toString(16).padStart(64, '0');
+    }
+
+    const tx = await contract.addCheckpoint(
+      productId,
+      location,
+      formattedHash,
+      timestamp
+    );
+    await tx.wait();
+    console.log(`✅ Checkpoint added on-chain for ${productId}`);
+    return true;
+  } catch (error) {
+    console.error("❌ Failed to add checkpoint on-chain:", error);
+    throw error;
+  }
+};
+
+
+/**
  * 🔽 Retrieve current CID from blockchain
  */
 export const getProductCID = async (
@@ -98,7 +132,7 @@ export const verifyCheckpointOnChain = async (
     return true;
   } catch (err) {
     console.error("❌ Failed to verify on-chain:", err);
-    return false;
+    throw err;
   }
 };
 

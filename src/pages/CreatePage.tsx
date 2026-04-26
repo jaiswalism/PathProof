@@ -6,7 +6,7 @@ import { ClipboardCopy, Check, Loader2 } from 'lucide-react';
 import { generateProductId } from '../services/blockchainService';
 import { generateProof } from '../services/zkProofService';
 import { uploadMetadata } from '../services/ipfsService';
-import { updateProductCID } from '../services/blockchainService';
+import { updateProductCID, addCheckpointOnChain } from '../services/blockchainService';
 
 import { getRawLocation } from "../services/locationService";
 
@@ -48,7 +48,6 @@ const CreatePage: React.FC = () => {
     try {
       // Generate a new product ID
       const newProductId = generateProductId();
-      setProductId(newProductId);
       
       // Generate initial zkPoL proof
       toast.loading('Generating proof of location...', { id: 'proof' });
@@ -72,7 +71,7 @@ const CreatePage: React.FC = () => {
         proofs: [
           {
             checkpoint: 'Manufacturing',
-            timestamp: Math.floor(Date.now() / (60 * 60 * 1000)),
+            timestamp: new Date().toISOString(),
             location: formData.location,
             proofHash: proofHash, // publicSignals[0]
             zkProof: {
@@ -87,14 +86,23 @@ const CreatePage: React.FC = () => {
       // Upload metadata to IPFS
       toast.loading('Uploading metadata to IPFS...', { id: 'ipfs' });
       const newCid = await uploadMetadata(metadata);
-      setCid(newCid);
       toast.success('Metadata uploaded to IPFS', { id: 'ipfs' });
       
       // Update blockchain record
       toast.loading('Updating blockchain record...', { id: 'blockchain' });
-      await updateProductCID(newProductId, newCid);
+      const txSuccess = await updateProductCID(newProductId, newCid);
+      
+      if (!txSuccess) {
+        throw new Error("Blockchain transaction failed or was rejected by the user.");
+      }
+
+      toast.loading('Adding initial checkpoint to smart contract...', { id: 'blockchain' });
+      await addCheckpointOnChain(newProductId, formData.location, proofHash, timestamp);
+      
       toast.success('Blockchain record updated', { id: 'blockchain' });
       
+      setProductId(newProductId);
+      setCid(newCid);
       toast.success('Product created successfully');
     } catch (error) {
       console.error('Error creating product:', error);

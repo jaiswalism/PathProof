@@ -12,7 +12,7 @@ const Footer: React.FC = () => {
           <div className="col-span-1 md:col-span-2">
             <Link to="/" className="flex items-center space-x-2">
               <Layers size={24} />
-              <span className="text-xl font-bold text-white">TraceChain</span>
+              <span className="text-xl font-bold text-white">PathProof</span>
             </Link>
             <p className="mt-4 max-w-md text-slate-400">
               Secure supply chain traceability with blockchain verification and zero-knowledge proofs.
@@ -71,7 +71,7 @@ const Footer: React.FC = () => {
         </div>
         
         <div className="mt-12 border-t border-slate-800 pt-8 text-center text-sm text-slate-400">
-          <p>&copy; {year} TraceChain. All rights reserved.</p>
+          <p>&copy; {year} PathProof. All rights reserved.</p>
         </div>
       </div>
     </footer>

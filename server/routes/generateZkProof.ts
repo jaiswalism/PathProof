@@ -10,7 +10,7 @@ router.post("/", async (req, res) => {
     console.log("📥 Received zkPoL request:", req.body);
     const { lat, lng, timestamp, deviceId } = req.body;
 
-    const basePath = path.resolve("zkpol"); // relative to /server
+    const basePath = path.resolve(process.cwd(), "server/zkpol");
     const inputPath = path.join(basePath, "input.json");
     const proofPath = path.join(basePath, "proof.json");
     const publicPath = path.join(basePath, "public.json");

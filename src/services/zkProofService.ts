@@ -39,7 +39,7 @@ export const generateProof = async (
   returnFull = false
 ): Promise<any> => {
 
-  const res = await fetch("http://localhost:5000/api/proof", {
+  const res = await fetch("/api/proof", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ lat, lng, timestamp, deviceId }),
