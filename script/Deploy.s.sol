@@ -6,12 +6,12 @@ import "script/ProductRegistry.sol";
 
 // Mock verifier for deployment
 contract DummyVerifier is IZKVerifier {
-    function verifyTx(
-        uint[2] memory,
-        uint[2][2] memory,
-        uint[2] memory,
-        uint[] memory
-    ) external pure override returns (bool) {
+    function verifyTx(uint256[2] memory, uint256[2][2] memory, uint256[2] memory, uint256[] memory)
+        external
+        pure
+        override
+        returns (bool)
+    {
         return true;
     }
 }
