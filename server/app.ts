@@ -10,4 +10,10 @@ app.use(express.json());
 app.use("/api/proof", generateZkProofRoute);
 
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`🟢 Backend running on port ${PORT}`));
+
+// Only start the server locally. Vercel will import the app directly.
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => console.log(`🟢 Backend running on port ${PORT}`));
+}
+
+export default app;

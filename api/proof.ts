@@ -1,11 +1,12 @@
-// /server/routes/generateZkProof.ts
-import express from "express";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
 import path from "path";
 import * as snarkjs from "snarkjs";
 
-const router = express.Router();
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-router.post("/", async (req, res) => {
   try {
     console.log("📥 Received zkPoL request:", req.body);
     const { lat, lng, timestamp, deviceId } = req.body;
@@ -17,25 +18,29 @@ router.post("/", async (req, res) => {
     const input = { lat, lng, timestamp, deviceId };
 
     console.log("⚙️ Generating proof in memory...");
-    const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasmPath, zkeyPath);
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+      input,
+      wasmPath,
+      zkeyPath
+    );
 
-    if (!Array.isArray(publicSignals) || publicSignals.some((x) => typeof x === "undefined")) {
+    if (
+      !Array.isArray(publicSignals) ||
+      publicSignals.some((x) => typeof x === "undefined")
+    ) {
       throw new Error("Invalid publicSignals format");
     }
 
     const sanitizedProof = JSON.parse(JSON.stringify(proof));
     const sanitizedSignals = publicSignals.map((x) => x.toString());
 
-    console.log("🧾 Sending response to client...");
-    res.status(200).json({
+    console.log("✅ Proof generated, sending response...");
+    return res.status(200).json({
       proof: sanitizedProof,
       publicSignals: sanitizedSignals,
     });
-    console.log("✅ Response sent.");
   } catch (err) {
-    console.error("❌ Error in zkProof route:", err);
-    res.status(500).json({ error: "Failed to generate proof" });
+    console.error("❌ Error in zkProof serverless function:", err);
+    return res.status(500).json({ error: "Failed to generate proof" });
   }
-});
-
-export default router;
+}

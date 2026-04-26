@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "functions": {
+    "api/proof.ts": {
+      "maxDuration": 60,
+      "includeFiles": "server/zkpol/**"
+    }
+  }
+}
